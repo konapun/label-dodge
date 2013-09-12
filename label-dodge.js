@@ -40,6 +40,7 @@ LabelDodge.prototype = function() {
 			 * Just like the regular ctx.drawImage except this one detects overlap and pushes the draw coordinates down
 			 */
 			this.drawImage = function(img, x, y, width, height) {
+				height = height/2
 				var fillStyle = this.fillStyle, // save the fill style for the op closure
 				    strokeStyle = this.strokeStyle,
 					func = {
@@ -64,7 +65,7 @@ LabelDodge.prototype = function() {
 								rowLineDrawn = true;
 							}
 							
-							dodger.context.drawImage(img, dodger.left + this.x, row.y-this.height/2, this.width, this.height); //FIXME: Use a combination of y from row and this
+							dodger.context.drawImage(img, dodger.left + this.x, row.y-this.height, this.width, this.height); //FIXME: Use a combination of y from row and this
 						}
 					};
 				
@@ -183,29 +184,21 @@ LabelDodge.prototype = function() {
 		 * infinite recursion. This function is (so far) deterministic.
 		 */
 	    dodgeRecurse = function(caller, maxTries, currTry, fitted) {
-			if ((typeof maxTries !== 'undefined') && (currTry > maxTries)) {
-				return false;
-			}
-			var sorted = verticalSortRows(fitted),
-			    nextFitted = [],
-			    recurse = false; 
-			for (var i = 0; i < sorted.length-1; i++) {
-				var curr = sorted[i],
-				    next = sorted[i+1];
-				
-				if (curr.y + curr.height > next.y) { // overlap found; try to eliminate it on this pass
-					console.log("OVERLAP FOUND");
-					next.y = curr.y + curr.height + 1;
-					recurse = true;
-				}
-				nextFitted.push(curr);
-			}
+			var strategy = determineStrategy(fitted, maxTries);
+			return strategy(caller, maxTries, currTry, fitted);
+		},
+		
+		/*
+		 * Find the best strategy for fitting the labels,
+		 * working in order of preference
+		 */
+		determineStrategy = function(rows) {
+			var preference = [
+				pushDownStrategy,
+				pushUpStrategy
+			];
 			
-			if (recurse) {
-				dodgeRecurse(caller, maxTries, currTry+1, nextFitted);
-			}
-			
-			return fitted;
+			return preference[0];
 		},
 		
 		/*
@@ -228,7 +221,89 @@ LabelDodge.prototype = function() {
 			});
 			
 			return copy;
+		},
+		
+	  /* Fitting strategies */
+		
+		/*
+		 * Recursively try to fit the rows by draw operations without overlap.
+		 * Currently, this function isn't too smart and only moves things
+		 * down, which is fine for now because it can't be tricked into
+		 * infinite recursion. This function is (so far) deterministic.
+		 */
+	    pushDownStrategy = function(caller, maxTries, currTry, fitted) {
+			if ((typeof maxTries !== 'undefined') && (currTry > maxTries)) {
+				return false;
+			}
+			var sorted = verticalSortRows(fitted),
+			    nextFitted = [],
+			    recurse = false; 
+			for (var i = 0; i < sorted.length-1; i++) {
+				var curr = sorted[i],
+				    next = sorted[i+1];
+				
+				if (curr.y + curr.height > next.y) { // overlap found; try to eliminate it on this pass
+					next.y = curr.y + curr.height + 1;
+					recurse = true;
+				}
+				nextFitted.push(curr);
+			}
+			
+			if (recurse) {
+				pushDownStrategy(caller, maxTries, currTry+1, nextFitted);
+			}
+			
+			return fitted;
+		},
+		
+		/*
+		 * Align all labels one after the other vertically so that no gaps
+		 * exist in the labels. This is the ideal fallback strategy since
+		 * it will use space optimally and only uses a single pass, although
+		 * positioning labels closer to where they belong would be visually ideal
+		 */
+		pushUpStrategy = function(caller, maxTries, currTry, fitted) {
+			if ((typeof maxTries !== 'undefined') && (currTry > maxTries)) {
+				return false;
+			}
+			var sorted = verticalSortRows(fitted),
+			    nextFitted = [],
+				recurse = false;
+			for (var i = 0; i < sorted.length-1; i++) {
+				var curr = sorted[i],
+				    next = sorted[i+1];
+				if (i == 0) {
+					nextFitted.push(curr);
+				}
+				next.y = curr.y + curr.height;
+				nextFitted.push(next);
+			}
+			
+			return nextFitted;
+		},
+		
+		/*
+		 * !!!BETA!!!
+		 * Strategy for dodging which can move rows either up or down
+		 */
+		bidirectionalStrategy = function(caller, maxTries, currTry, fitted) {
+			if ((typeof maxTries !== 'undefined') && (currTry > maxTries)) {
+				return false;
+			}
+			
+			//TODO
+			return fitted;
+		},
+		
+		/*
+		 * After running a fitting strategy, some labels may have been pushed
+		 * off the page. This function determines the out-of-bounds height
+		 * in hopes that a gap of equal or larger size can be found or created
+		 */
+		sizeOutOfBounds = function() {
+		
 		};
+		
 	
 	return {
 		lineToRow: lineToRow,
