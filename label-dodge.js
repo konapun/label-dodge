@@ -40,10 +40,11 @@ LabelDodge.prototype = function() {
 			 * Just like the regular ctx.drawImage except this one detects overlap and pushes the draw coordinates down
 			 */
 			this.drawImage = function(img, x, y, width, height) {
-				height = height/2
+				//height = height/2;
 				var fillStyle = this.fillStyle, // save the fill style for the op closure
 				    strokeStyle = this.strokeStyle,
 					func = {
+						res: img,
 						x: x,
 						y: y,
 						width: width,
@@ -65,7 +66,8 @@ LabelDodge.prototype = function() {
 								rowLineDrawn = true;
 							}
 							
-							dodger.context.drawImage(img, dodger.left + this.x, row.y-this.height, this.width, this.height); //FIXME: Use a combination of y from row and this
+							this.x += dodger.left;
+							dodger.context.drawImage(img, this.x, row.y-this.height, this.width, this.height); //FIXME: Use a combination of y from row and this
 						}
 					};
 				
@@ -86,6 +88,7 @@ LabelDodge.prototype = function() {
 				var fillStyle = this.fillStyle,
 				    strokeStyle = this.strokeStyle,
 					func = {
+						res: text,
 						x: x,
 						y: y,
 						width: dodger.context.measureText(text).width,
@@ -107,7 +110,8 @@ LabelDodge.prototype = function() {
 								rowLineDrawn = true;
 							}
 							
-							dodger.context.fillText(text, dodger.left + this.x, row.y); // //FIXME: Use a combination of y from row and this
+							this.x += dodger.left;
+							dodger.context.fillText(text, this.x, row.y); // //FIXME: Use a combination of y from row and this
 						}
 					};
 				
@@ -154,7 +158,7 @@ LabelDodge.prototype = function() {
 			var drawLib = new dodgeDrawLib(this, true);
 			fn(drawLib);
 			drawLibEnd();
-		}
+		},
 		
 		/*
 		 * Loop through stored rows and do the dodge.
@@ -170,35 +174,29 @@ LabelDodge.prototype = function() {
 				for (var i = 0; i < fitted.length; i++) { // each row
 					fitted[i].draw();
 				}
-				return true;
+				return rows;
 			}
-			return false; // wasn't able to complete dodge in maxTries
+			return []; // wasn't able to complete dodge in maxTries
 		},
 	
 	/* PRIVATE */
 		
 		/*
-		 * Recursively try to fit the rows by draw operations without overlap.
-		 * Currently, this function isn't too smart and only moves things
-		 * down, which is fine for now because it can't be tricked into
-		 * infinite recursion. This function is (so far) deterministic.
+		 * Try strategies in order of preference
 		 */
 	    dodgeRecurse = function(caller, maxTries, currTry, fitted) {
-			var strategy = determineStrategy(fitted, maxTries);
-			return strategy(caller, maxTries, currTry, fitted);
-		},
-		
-		/*
-		 * Find the best strategy for fitting the labels,
-		 * working in order of preference
-		 */
-		determineStrategy = function(rows) {
 			var preference = [
 				pushDownStrategy,
 				pushUpStrategy
 			];
 			
-			return preference[0];
+			for (var i = 0; i < preference.length; i++) {
+				var strat = preference[i],
+				    ret = strat(caller, maxTries, currTry, fitted);
+				if (ret) return ret;
+			}
+			var strategy = determineStrategy(fitted, maxTries);
+			return strategy(caller, maxTries, currTry, fitted);
 		},
 		
 		/*
@@ -253,6 +251,7 @@ LabelDodge.prototype = function() {
 				pushDownStrategy(caller, maxTries, currTry+1, nextFitted);
 			}
 			
+			//TODO: check out of bounds and return false if labels do not fit in the canvas height
 			return fitted;
 		},
 		
@@ -263,9 +262,6 @@ LabelDodge.prototype = function() {
 		 * positioning labels closer to where they belong would be visually ideal
 		 */
 		pushUpStrategy = function(caller, maxTries, currTry, fitted) {
-			if ((typeof maxTries !== 'undefined') && (currTry > maxTries)) {
-				return false;
-			}
 			var sorted = verticalSortRows(fitted),
 			    nextFitted = [],
 				recurse = false;
@@ -283,8 +279,9 @@ LabelDodge.prototype = function() {
 		},
 		
 		/*
-		 * !!!BETA!!!
-		 * Strategy for dodging which can move rows either up or down
+		 * Strategy for dodging which can move rows either up or down.
+		 * This should strike a nice balance between space efficiency
+		 * and visual appearance.
 		 */
 		bidirectionalStrategy = function(caller, maxTries, currTry, fitted) {
 			if ((typeof maxTries !== 'undefined') && (currTry > maxTries)) {
