@@ -26,7 +26,9 @@ LabelDodge.prototype = function() {
 			
 			var row = { // rows should dodge together
 					y: undefined,
+					x: undefined,
 					height: 0,
+					width: 0,
 					items: [],
 					draw: function() {
 						for (var i = 0; i < this.items.length; i++) {
@@ -75,9 +77,13 @@ LabelDodge.prototype = function() {
 				if (typeof row.y === 'undefined' || y < row.y) {
 					row.y = y;
 				}
+				if (typeof row.x === 'undefined' || x < row.x) {
+					row.x = x;
+				}
 				if (func.height > row.height) { 
 					row.height = func.height; // FIXME
 				}
+				row.width += width;
 				row.items.push(func);
 			};
 			
@@ -180,15 +186,29 @@ LabelDodge.prototype = function() {
 		},
 	
 	/* PRIVATE */
+	
+		/*
+		 * Find the total height of the labels to use for determining
+		 * which strategy to use
+		 */
+		getTotalHeight = function() {
+			var height = 0;
+			for (var i = 0; i < rows.length; i++) {
+				height += rows[i].height;
+			}
+			
+			return height;
+		},
 		
 		/*
 		 * Try strategies in order of preference
 		 */
 	    dodgeRecurse = function(caller, maxTries, currTry, fitted) {
-			var preference = [
-				pushDownStrategy,
-				pushUpStrategy
-			];
+			var totalHeight = getTotalHeight(),
+			    preference = [
+					pushDownStrategy,
+					pushUpStrategy
+			    ];
 			
 			for (var i = 0; i < preference.length; i++) {
 				var strat = preference[i],
