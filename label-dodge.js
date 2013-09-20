@@ -61,6 +61,8 @@ LabelDodge.prototype = function() {
 									dodger.context.moveTo(dodger.left, y);
 									dodger.context.lineTo(dodger.left + dodger.lineLength + this.x, row.y);
 									dodger.context.stroke();
+									
+									row.width += dodger.lineLength;
 								}
 								
 								this.x += dodger.lineLength;
@@ -69,6 +71,9 @@ LabelDodge.prototype = function() {
 							}
 							
 							this.x += dodger.left;
+							if (row.x === 'undefined' || this.x < row.x) {
+								row.x = this.x;
+							}
 							dodger.context.drawImage(img, this.x, row.y-this.height, this.width, this.height); //FIXME: Use a combination of y from row and this
 						}
 					};
@@ -76,9 +81,6 @@ LabelDodge.prototype = function() {
 				/* Update row */
 				if (typeof row.y === 'undefined' || y < row.y) {
 					row.y = y;
-				}
-				if (typeof row.x === 'undefined' || x < row.x) {
-					row.x = x;
 				}
 				if (func.height > row.height) { 
 					row.height = func.height; // FIXME
@@ -93,11 +95,12 @@ LabelDodge.prototype = function() {
 			this.fillText = function(text, x, y) {
 				var fillStyle = this.fillStyle,
 				    strokeStyle = this.strokeStyle,
+					textWidth = dodger.context.measureText(text).width,
 					func = {
 						res: text,
 						x: x,
 						y: y,
-						width: dodger.context.measureText(text).width,
+						width: textWidth,
 						height: 8,
 						op: function() {
 							dodger.context.fillStyle = fillStyle;
@@ -109,6 +112,8 @@ LabelDodge.prototype = function() {
 									dodger.context.moveTo(dodger.left, y);
 									dodger.context.lineTo(dodger.left + dodger.lineLength + this.x, row.y);
 									dodger.context.stroke();
+									
+									row.width += dodger.lineLength;
 								}
 								
 								this.x += dodger.lineLength;
@@ -117,6 +122,9 @@ LabelDodge.prototype = function() {
 							}
 							
 							this.x += dodger.left;
+							if (typeof row.x === 'undefined' || this.x < row.x) {
+								row.x = this.x;
+							}
 							dodger.context.fillText(text, this.x, row.y); // //FIXME: Use a combination of y from row and this
 						}
 					};
@@ -128,7 +136,7 @@ LabelDodge.prototype = function() {
 				if (func.height > row.height) {
 					row.height = func.height;
 				}
-				
+				row.width += textWidth;
 				row.items.push(func);
 			};
 			
