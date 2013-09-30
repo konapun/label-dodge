@@ -1,8 +1,6 @@
 # Canvas Label Dodge
-Turn ![before](images/before.png "before") into ![after](images/after.png "after")!
-
 Label regions on a canvas using normal canvas context drawing functions, automatically removing
-overlap along the way.
+overlap along the way. (See [before](images/before.png) and [after](images/after.png) examples).
 
 ## Example usage
 ```js
