@@ -179,7 +179,6 @@ LabelDodge.prototype = function() {
 		 * Dodging may cause more overlap, so this function works
 		 * recursively, optionally taking a maximum number of tries to
 		 * remove overlap
-		 *
 		 */
 		dodge = function(maxTries) {
 			maxTries = maxTries || undefined;
@@ -318,6 +317,14 @@ LabelDodge.prototype = function() {
 			
 			//TODO
 			return fitted;
+		},
+		
+		/*
+		 * Find all chunks, where each chunk is a gap between labels with a minimum
+		 * height of chunkMin pixels
+		 */
+		rechunk = function(chunkMin) {
+		
 		},
 		
 		/*

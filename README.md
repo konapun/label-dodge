@@ -1,11 +1,10 @@
-#DOCUMENTATION TODO
-
 # Canvas Label Dodge
+Turn ![before](images/before.png "before") into ![after](images/after.png "after")!
 
-## Intro
-Turn [this] into [this]!
+Label regions on a canvas using normal canvas context drawing functions, automatically removing
+overlap along the way.
 
-## Usage
+## Example usage
 ```js
 var canvas = ..., //
     ctx = canvas.getContext('2d');
@@ -14,3 +13,5 @@ dodger.lineToRow(function(ctx2) { // ctx2 provides the same operations as ctx bu
 	
 });
 ```
+
+## Drawing operations (so far)
